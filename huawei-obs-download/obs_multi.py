@@ -26,7 +26,8 @@ class Utils(object):
     def md5sum(filename):
         with open(filename, "r") as f:
             fmd5 = hashlib.md5(f.read())
-            etag = '"%s"' % fmd5.hexdigest()  # 因OBS返回的ETAG特殊, 故在此格式化处理.
+            # 因OBS返回的ETAG特殊, 故在此格式化处理.
+            etag = '"%s"' % fmd5.hexdigest()
             return etag
 
     @staticmethod
@@ -43,7 +44,8 @@ class Utils(object):
         if not os.path.exists(logs_path):
             os.makedirs(logs_path)
 
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         fh = logging.FileHandler(log_path)
         fh.setFormatter(formatter)
 
@@ -102,9 +104,11 @@ class HuaWeiDownLoad(object):
             self._print("%s : %s" % (bucket, response.body.__dict__))
 
             total_info['sizes'] += int(response.body.__dict__['size'])
-            total_info['objectNumbers'] += int(response.body.__dict__['objectNumber'])
+            total_info['objectNumbers'] += int(
+                response.body.__dict__['objectNumber'])
 
-        total_info['human_sizes'] = ''.join((str(float(total_info['sizes']) / 1024 ** 3), 'G'))
+        total_info['human_sizes'] = ''.join(
+            (str(float(total_info['sizes']) / 1024 ** 3), 'G'))
         self._print("Total : %s" % total_info)
 
     def download_all_buckets(self, env):
@@ -117,7 +121,8 @@ class HuaWeiDownLoad(object):
             download_path = download_storage_path[env]
 
             if not self._next_bucket:
-                self._print("%s%s%s" % ("*" * 40, "All Bucket Is Starting.", "*" * 40))
+                self._print(
+                    "%s%s%s" % ("*" * 40, "All Bucket Is Starting.", "*" * 40))
 
             for bucket in buckets:
                 # 跳过已执行bucket.
@@ -129,14 +134,17 @@ class HuaWeiDownLoad(object):
                 with open(self._download_bucket, 'wb') as f:
                     f.write('%s' % self._next_bucket)
 
-                hua_wei = HuaWeiBucket(bucket, max_keys=500, download_path=download_path)
+                hua_wei = HuaWeiBucket(bucket, max_keys=500,
+                                       download_path=download_path)
                 hua_wei.download_all_object()
 
-            self._print("%s%s%s" % ("*" * 40, "All Bucket Is Finished.", "*" * 40))
+            self._print(
+                "%s%s%s" % ("*" * 40, "All Bucket Is Finished.", "*" * 40))
 
 
 class HuaWeiBucket(object):
-    def __init__(self, bucket_name, max_keys=0, download_path=None, debug=False):
+    def __init__(self, bucket_name, max_keys=0, download_path=None,
+                 debug=False):
         """下载桶构建.
 
             :param bucket_name: 桶名
@@ -161,8 +169,10 @@ class HuaWeiBucket(object):
 
         self._print = Utils.build_file_logs("obs_hwc_s3", bucket_logs).info
 
-        self._download_marker = os.path.join(bucket_logs, 'download_marker.txt')
-        self._download_failure = os.path.join(bucket_logs, 'download_failure.txt')
+        self._download_marker = os.path.join(
+            bucket_logs, 'download_marker.txt')
+        self._download_failure = os.path.join(
+            bucket_logs, 'download_failure.txt')
 
         self._set_progress_marker()
 
@@ -201,7 +211,8 @@ class HuaWeiBucket(object):
                 with open(self._download_marker, 'wb') as f:
                     f.write('%s:%s' % (self._is_truncated, self._next_marker))
 
-            object_keys = [(item.__dict__['etag'], item.__dict__['key']) for item in response.body.contents]
+            object_keys = [(item.__dict__['etag'], item.__dict__['key']) for
+                           item in response.body.contents]
 
         return object_keys
 
@@ -235,8 +246,10 @@ class HuaWeiBucket(object):
 
         # 如目录则构建存放路径.
         if '/' in object_key:
-            object_path = os.path.join(bucket_base_path, *object_key.split('/'))
-            down_load_path = os.path.join(bucket_base_path, *os.path.dirname(object_key).split('/'))
+            object_path = os.path.join(
+                bucket_base_path, *object_key.split('/'))
+            down_load_path = os.path.join(
+                bucket_base_path, *os.path.dirname(object_key).split('/'))
         else:
             object_path = os.path.join(bucket_base_path, object_key)
             down_load_path = bucket_base_path
@@ -262,7 +275,8 @@ class HuaWeiBucket(object):
         else:
             etag, object_key = None, object_md5_key
 
-        down_load_path = self._check_object_and_catalog(object_md5_key, bucket_path)
+        down_load_path = self._check_object_and_catalog(
+            object_md5_key, bucket_path)
         if down_load_path in [1, 2]:
             return 1
 
@@ -270,7 +284,8 @@ class HuaWeiBucket(object):
             # Fixed:// TypeError: decoding Unicode is not supported.
             if isinstance(object_key, unicode):
                 object_key = u'%s' % object_key.encode("UTF-8")
-            self._connect.getObject(self._bucket_name, object_key, down_load_path)
+            self._connect.getObject(
+                self._bucket_name, object_key, down_load_path)
         except Exception as ex:
             self._print("getObject ==> %s" % ex)
             if self._debug:
@@ -281,7 +296,8 @@ class HuaWeiBucket(object):
             # 校验文件下载正确性.
             base_name = os.path.basename(object_key)
             if etag:
-                return int(Utils.md5sum(os.path.join(down_load_path, base_name)) == etag)
+                return int(Utils.md5sum(
+                    os.path.join(down_load_path, base_name)) == etag)
             else:
                 return 1
 
@@ -311,7 +327,8 @@ class HuaWeiBucket(object):
         while self._is_truncated:
             keys = self._get_all_object()
             if keys:
-                tasks = [gevent.spawn(pack_download, item, bucket_path) for item in keys]
+                tasks = [gevent.spawn(pack_download, item, bucket_path) for
+                         item in keys]
                 gevent.joinall(tasks)
 
             if i is not None:
@@ -319,7 +336,8 @@ class HuaWeiBucket(object):
                 if i == 5:
                     break
 
-        self._print("%s%s%s" % ("=" * 40, "Download Failure is starting", "=" * 40))
+        self._print(
+            "%s%s%s" % ("=" * 40, "Download Failure is starting", "=" * 40))
 
         try:
             # RuntimeError: maximum recursion depth exceeded.
@@ -327,7 +345,8 @@ class HuaWeiBucket(object):
         except Exception as ex:
             self._print(ex)
 
-        self._print("%s%s%s" % ("=" * 40, "Download Failure is Done.", "=" * 40))
+        self._print(
+            "%s%s%s" % ("=" * 40, "Download Failure is Done.", "=" * 40))
 
         self._print(info)
 
@@ -350,8 +369,12 @@ class HuaWeiBucket(object):
 
                     i = tuple(i.split(':'))
                     result = self.download_object(i, bucket_path=bucket_path)
+
                     # 失败的对象再次下载重试, 因校验码总是失败的情况.
-                    result = self.download_object(i[-1], bucket_path=bucket_path) if not result else result
+                    if not result:
+                        result = self.download_object(
+                            i[-1], bucket_path=bucket_path)
+
                     if not result:
                         self._print("DownloadFailure ==> %s" % str(i))
                         second_failure.append(i)
@@ -379,7 +402,8 @@ class HuaWeiBucket(object):
         """
 
         etag, object_key = object_md5_key
-        down_load_path = self._check_object_and_catalog(object_md5_key, bucket_path)
+        down_load_path = self._check_object_and_catalog(object_md5_key,
+                                                        bucket_path)
 
         # 如为文件夹直接跳过.
         if down_load_path is 2:
@@ -391,8 +415,15 @@ class HuaWeiBucket(object):
             # 只对包含文件夹的做移动操作.
             if '/' in object_key:
                 base_name = os.path.basename(object_key)
-                path_correct = True if down_load_path is 1 else os.path.exists(os.path.join(down_load_path, base_name))
-                path_error = os.path.exists(os.path.join(bucket_path, base_name))
+
+                if down_load_path is 1:
+                    path_correct = True
+                else:
+                    path_correct = os.path.exists(
+                        os.path.join(down_load_path, base_name))
+
+                path_error = os.path.exists(
+                    os.path.join(bucket_path, base_name))
 
                 # 如都存在删错误存放滴.
                 if path_correct and path_error:
@@ -400,7 +431,8 @@ class HuaWeiBucket(object):
 
                 # 如正确位置不存在错误位置存在则移动.
                 if not path_correct and path_error:
-                    shutil.move(os.path.join(bucket_path, base_name), os.path.join(down_load_path, base_name))
+                    shutil.move(os.path.join(bucket_path, base_name),
+                                os.path.join(down_load_path, base_name))
         except Exception as ex:
             self._print("path_object_mov ==> %s" % ex)
             return 0
@@ -424,21 +456,23 @@ class HuaWeiBucket(object):
         if os.path.exists(corr_failure_path):
             os.remove(corr_failure_path)
 
-        self._print('{place} Path correction is start. {place}'.format(place='=' * 50))
+        self._print(
+            '{place} Path correction is start. {place}'.format(place='=' * 50))
         while self._is_truncated:
             keys = self._get_all_object()
             if keys:
                 with open(corr_failure_path, 'ab') as f:
                     for item in keys:
-                        result = self.path_object_mov(item, bucket_path=bucket_path)
+                        result = self.path_object_mov(item,
+                                                      bucket_path=bucket_path)
                         if not result:
                             self._print("MoveObjectFailure ==> %s" % item)
                             f.write('%s\n' % item)
 
-        self._print('{place} Path correction is done. {place}'.format(place='=' * 50))
+        self._print(
+            '{place} Path correction is done. {place}'.format(place='=' * 50))
 
     def unicode_not_supported(self, object_md5_key):
-
         # 每桶每目录, 如不存在则创建.
         bucket_path = os.path.join(self._download_path, self._bucket_name)
         if not os.path.exists(bucket_path):
@@ -447,13 +481,13 @@ class HuaWeiBucket(object):
         self.download_object(object_md5_key, bucket_path=bucket_path)
 
     def again_failure_supported(self):
-
         # 每桶每目录, 如不存在则创建.
         bucket_path = os.path.join(self._download_path, self._bucket_name)
         if not os.path.exists(bucket_path):
             os.makedirs(bucket_path)
 
-        self._print("%s%s%s" % ("=" * 40, "Download Failure is starting", "=" * 40))
+        self._print(
+            "%s%s%s" % ("=" * 40, "Download Failure is starting", "=" * 40))
 
         try:
             # RuntimeError: maximum recursion depth exceeded.
@@ -461,7 +495,8 @@ class HuaWeiBucket(object):
         except Exception as ex:
             self._print(ex)
 
-        self._print("%s%s%s" % ("=" * 40, "Download Failure is Done.", "=" * 40))
+        self._print(
+            "%s%s%s" % ("=" * 40, "Download Failure is Done.", "=" * 40))
 
 
 def main():
@@ -469,31 +504,38 @@ def main():
     """
 
     parser = optparse.OptionParser()
-    parser.add_option("-e", "--env",
-                      type="string",
-                      dest="env",
-                      help="which environment script is running In ['local', 'online'].")
+    parser.add_option(
+        "-e", "--env",
+        type="string",
+        dest="env",
+        help="which environment script is running In ['local', 'online'].")
 
     parser.add_option("-b", "--bucket",
                       type="string",
                       dest="bucket",
                       help="Which bucket will be downloaded.")
 
-    parser.add_option("-a", "--action",
-                      type="string",
-                      dest="action",
-                      default="download",
-                      help="Which action will be done In ['download', 'verify', 'failure'].")
+    parser.add_option(
+        "-a", "--action",
+        type="string",
+        dest="action",
+        default="download",
+        help="Which action will be done In ['download', 'verify', 'failure'].")
 
     (options, args) = parser.parse_args()
 
-    if not options.env or options.env.lower() not in ['local', 'online'] or not options.bucket:
+    if not options.env or options.env.lower() not in ['local', 'online'] \
+            or not options.bucket:
         print('参数错误')
         exit(0)
 
     # 根据local or online 运行环境.
     download_path = download_storage_path[options.env.lower()]
-    hua_wei = HuaWeiBucket(options.bucket, max_keys=500, download_path=download_path, debug=False)
+    hua_wei = HuaWeiBucket(
+        options.bucket,
+        max_keys=500,
+        download_path=download_path,
+        debug=False)
 
     if options.action.lower() == "download":
         hua_wei.download_all_object()
@@ -511,18 +553,18 @@ def minor(mode):
         :param mode: 运行模式, ['supervisor', 'perfection']中其一.
 
         supervisor缺点：
-            1. 依赖于numprocs, numprocs_start的设置, numprocs_start必须0, numprocs必须为桶的数量;
-            2. 获取到的buckets无法共享, 需要多次请求;
+        依赖于的设置, numprocs_start必须0, numprocs必须为桶的数量;
+        获取到的buckets无法共享, 需要多次请求;
     """
 
     parser = optparse.OptionParser()
-    parser.add_option("-e", "--env",
-                      type="string",
-                      dest="env",
-                      help="which environment script is running In ['local', 'online'].")
+    parser.add_option(
+        "-e", "--env",
+        type="string",
+        dest="env",
+        help="which environment script is running In ['local', 'online'].")
 
     (options, args) = parser.parse_args()
-
     if not options.env or options.env.lower() not in ['local', 'online']:
         print('参数错误')
         exit(0)
@@ -537,15 +579,26 @@ def minor(mode):
     buckets = HuaWeiDownLoad(ACCESS_KEY, SECRET_KEY).get_all_bucket()
 
     if mode == 'supervisor':
-        print("Doing Bucket: %s; supervisor PID: %s" % (buckets[args[0]], args[0]))
-        hua_wei = HuaWeiBucket(buckets[args[0]], max_keys=500, download_path=download_path)
+        print("Doing Bucket: %s; supervisor PID: %s" % (
+            buckets[args[0]], args[0]))
+
+        hua_wei = HuaWeiBucket(
+            buckets[args[0]],
+            max_keys=500,
+            download_path=download_path)
         hua_wei.download_all_object()
+
     elif mode == 'perfection':
         for bucket in buckets:
             pid = os.fork()
             if pid == 0:
-                print("Doing Bucket: %s; SubProcess PID: %s" % (bucket, os.getpid()))
-                hua_wei = HuaWeiBucket(bucket, max_keys=500, download_path=download_path)
+                print("Doing Bucket: %s; SubProcess PID: %s"
+                      % (bucket, os.getpid()))
+
+                hua_wei = HuaWeiBucket(
+                    bucket,
+                    max_keys=500,
+                    download_path=download_path)
                 hua_wei.download_all_object()
                 return
 
